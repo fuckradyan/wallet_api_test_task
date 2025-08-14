@@ -1,0 +1,11 @@
+__pycache__/
+app/__pycache__/
+ve/  
+config.py
+app/config.py
+instance/
+*.db
+*.sqlite
+*.sqlite3
+*.env
+secrets.ini
