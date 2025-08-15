@@ -6,18 +6,22 @@ from sqlalchemy.exc import SQLAlchemyError
 import random
 import uuid
 
-from models import Wallet 
+
+from app.models import Wallet 
 
 app = Flask(__name__)
-
 app.config.from_pyfile('config.py')
+
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 @app.route('/')
 def hello():
-    wallets = db.session.query(Wallet).all()
-    return jsonify([wallet.to_dict() for wallet in wallets])
+    try:
+        wallets = db.session.query(Wallet).all()
+        return jsonify([wallet.to_dict() for wallet in wallets])
+    except Exception as e:
+        return jsonify({'error' : f"{e}"})
 
 @app.route('/addwallet')
 def addwallet():
@@ -53,30 +57,30 @@ def get_balance(wallet_uuid):
 
 def process_wallet_operation(wallet_uuid, operation_type, amount):
 
-    try:
-        if operation_type not in ('DEPOSIT', 'WITHDRAW'):
-            raise ValueError("Invalid operation type")
-        if type(int()) != type(amount) or amount <= 0:
-            raise ValueError("Amount must be int and greater than 0")
+    # try:
+    if operation_type not in ('DEPOSIT', 'WITHDRAW'):
+        raise ValueError("Invalid operation type")
+    if type(int()) != type(amount) or amount <= 0:
+        raise ValueError("Amount must be int and greater than 0")
+    
+    wallet = db.session.query(Wallet).filter_by(uuid=wallet_uuid).with_for_update().first()
         
-        wallet = db.session.query(Wallet).filter_by(uuid=wallet_uuid).with_for_update().first()
-            
-        if not wallet:
-            return {'error': 'Wallet not found'}
-        if operation_type == 'WITHDRAW' and wallet.balance < amount:
-            raise ValueError("Insufficient funds")
-        
-        new_balance = wallet.balance + amount if operation_type == 'DEPOSIT' else wallet.balance - amount
-        wallet.balance = new_balance
-        db.session.commit() 
-        
-        return {'balance': new_balance}
+    if not wallet:
+        return ValueError("Wallet not found")
+    if operation_type == 'WITHDRAW' and wallet.balance < amount:
+        raise ValueError("Insufficient balance")
+    
+    new_balance = wallet.balance + amount if operation_type == 'DEPOSIT' else wallet.balance - amount
+    wallet.balance = new_balance
+    db.session.commit() 
+    
+    return {'balance': new_balance}
 
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        return {'Database error' : f'{e}'}
-    except Exception as e:
-        return {'error' : f'{e}'}
+    # except SQLAlchemyError as e:
+    #     db.session.rollback()
+    #     return {'Database error' : f'{e}'}, 500
+    # except Exception as e:
+    #     return {'error' : f'{e}'}, 400
 
 
 @app.route('/api/v1/wallets/<wallet_uuid>/operation', methods=['POST'])
@@ -94,7 +98,7 @@ def wallet_operation(wallet_uuid):
             operation_type,
             amount
         )
-        return jsonify(new_balance)
+        return jsonify(new_balance), 200
 
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
