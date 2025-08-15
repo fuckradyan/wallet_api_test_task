@@ -4,16 +4,14 @@ services:
 
   db:
     image: postgres:13
-    environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: myuser
-      POSTGRES_DB: mydb
+    env_file:
+      - .env
     volumes:
       - pg_data:/var/lib/postgresql
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U myuser -d  mydb"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d  mydb"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -23,22 +21,14 @@ services:
       context: .
       dockerfile: Dockerfile.app
     environment:
-      DB_URL: postgresql://myuser:mypassword@db:5432/mydb
+      DB_NAME: db
     ports:
       - "5000:5000"
     depends_on:
       db:
         condition: service_healthy
     volumes: []
-    command: flask run
-
-
-  tests:
-    build:
-      context: .
-      dockerfile: Dockerfile.tests
-    depends_on:
-      - app
-      - db
+    command: >
+      sh -c "flask db upgrade && flask run -h 0.0.0.0 -p 5000"
 volumes:
   pg_data:

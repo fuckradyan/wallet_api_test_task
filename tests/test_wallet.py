@@ -1,6 +1,6 @@
 import pytest
 from app.app import app
-
+from app.config import test_wallet_uuid
 
 @pytest.fixture
 def client():
@@ -8,8 +8,35 @@ def client():
     with app.test_client() as client:
         yield client
 
+def test_create_wallet(client):
+
+    response = client.get(
+        "/addwallet",
+    )
+    assert response.status_code == 200
+    assert "balance" in response.json and "id" in response.json and "uuid" in response.json
+
+def test_balance_wallet_valid(client):
+    wallet_uuid = test_wallet_uuid
+
+    response = client.get(
+        f"/api/v1/wallets/{wallet_uuid}",
+    )
+    assert response.status_code == 200
+    assert "balance" in response.json
+    
+    
+def test_balance_wallet_invalid(client):
+    wallet_uuid = "test-uuid-123"
+
+    response = client.get(
+        f"/api/v1/wallets/{wallet_uuid}",
+    )
+    assert response.status_code == 404
+
+
 def test_post_operation_deposit(client):
-    wallet_uuid = "e1989086-4220-4937-9f32-cc9158eff303"
+    wallet_uuid = test_wallet_uuid
     
     response = client.post(
         f"/api/v1/wallets/{wallet_uuid}/operation",
@@ -19,7 +46,7 @@ def test_post_operation_deposit(client):
     assert "balance" in response.json
 
 def test_post_operation_withdraw(client):
-    wallet_uuid = "e1989086-4220-4937-9f32-cc9158eff303"
+    wallet_uuid = test_wallet_uuid
     
     response = client.post(
         f"/api/v1/wallets/{wallet_uuid}/operation",
@@ -42,3 +69,5 @@ def test_post_operation_invalid(client):
         json={"operation_type": "DEPOSIT", "amount": -100},
     )
     assert response.status_code == 400
+    
+    

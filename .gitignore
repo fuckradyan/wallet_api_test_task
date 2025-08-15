@@ -1,4 +1,5 @@
 __pycache__/
+.pytest_cache/
 app/__pycache__/
 ve/  
 config.py
@@ -9,3 +10,4 @@ instance/
 *.sqlite3
 *.env
 secrets.ini
+.pytest_cache/
